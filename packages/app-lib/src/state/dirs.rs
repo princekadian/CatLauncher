@@ -13,6 +13,16 @@ pub const LAUNCHER_LOGS_FOLDER_NAME: &str = "launcher_logs";
 pub const PROFILES_FOLDER_NAME: &str = "profiles";
 pub const METADATA_FOLDER_NAME: &str = "meta";
 
+/// Name of the launcher's data folder (in %APPDATA% on Windows).
+/// Matches the Tauri app identifier so all app files share one folder.
+pub const APP_DIR_NAME: &str = "CatLauncher";
+/// Data folder name used before the rename to Cat Launcher
+const OLD_APP_DIR_NAME: &str = "AstralRinthApp";
+
+/// Set when the old data folder was renamed during this run: (old path, new path)
+static APP_DIR_MIGRATION: std::sync::Mutex<Option<(PathBuf, PathBuf)>> =
+    std::sync::Mutex::new(None);
+
 #[derive(Debug)]
 pub struct DirectoryInfo {
     pub settings_dir: PathBuf, // Base settings directory- app database
@@ -27,9 +37,64 @@ impl DirectoryInfo {
             if std::env::current_dir().ok()?.join("portable.txt").exists() {
                 Some(std::path::Path::new("UserData").to_path_buf())
             } else {
-                Some(dirs::data_dir()?.join("AstralRinthApp"))
+                Self::app_data_dir()
             }
         })
+    }
+
+    /// The launcher's data folder. On first run after the rename to Cat Launcher,
+    /// the old "AstralRinthApp" folders are renamed so instances and settings carry over.
+    /// If the rename fails, the old folder keeps being used so no data is lost.
+    fn app_data_dir() -> Option<PathBuf> {
+        static APP_DIR: std::sync::OnceLock<Option<PathBuf>> =
+            std::sync::OnceLock::new();
+
+        APP_DIR
+            .get_or_init(|| {
+                // Webview data lives in the local app data folder; move it too (best effort)
+                if let Some(local_dir) = dirs::data_local_dir() {
+                    let old_local = local_dir.join(OLD_APP_DIR_NAME);
+                    let new_local = local_dir.join(APP_DIR_NAME);
+                    if old_local != new_local && !new_local.exists() && old_local.exists() {
+                        let _ = std::fs::rename(&old_local, &new_local);
+                    }
+                }
+
+                let data_dir = dirs::data_dir()?;
+                let new_dir = data_dir.join(APP_DIR_NAME);
+                let old_dir = data_dir.join(OLD_APP_DIR_NAME);
+
+                if !new_dir.exists() && old_dir.exists() {
+                    match std::fs::rename(&old_dir, &new_dir) {
+                        Ok(()) => {
+                            tracing::info!(
+                                "Moved launcher data from {} to {}",
+                                old_dir.display(),
+                                new_dir.display()
+                            );
+                            if let Ok(mut migration) = APP_DIR_MIGRATION.lock() {
+                                *migration = Some((old_dir, new_dir.clone()));
+                            }
+                        }
+                        Err(err) => {
+                            tracing::warn!(
+                                "Could not move launcher data to {}, keeping {}: {err}",
+                                new_dir.display(),
+                                old_dir.display()
+                            );
+                            return Some(old_dir);
+                        }
+                    }
+                }
+
+                Some(new_dir)
+            })
+            .clone()
+    }
+
+    /// Returns (old path, new path) once if the data folder was renamed during this run
+    pub(crate) fn take_app_dir_migration() -> Option<(PathBuf, PathBuf)> {
+        APP_DIR_MIGRATION.lock().ok()?.take()
     }
 
     /// Get all paths needed for Theseus to operate properly

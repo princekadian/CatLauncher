@@ -161,9 +161,12 @@ fn main() {
             RUST_LOG="theseus=trace" {run command}
 
     */
+    // Cat Launcher: move data from the old AstralRinthApp folders before anything opens them
+    let _ = theseus::prelude::DirectoryInfo::get_initial_settings_dir();
+
     let _log_guard = theseus::start_logger();
 
-    tracing::info!("Initialized tracing subscriber. Loading Modrinth App!");
+    tracing::info!("Initialized tracing subscriber. Loading Cat Launcher!");
 
     let mut builder = tauri::Builder::default();
 

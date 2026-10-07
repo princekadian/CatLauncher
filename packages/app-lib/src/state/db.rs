@@ -36,5 +36,38 @@ pub(crate) async fn connect() -> crate::Result<Pool<Sqlite>> {
 
     sqlx::migrate!().run(&pool).await?;
 
+    if let Some((old_dir, new_dir)) = DirectoryInfo::take_app_dir_migration() {
+        update_moved_paths(&pool, &old_dir, &new_dir).await?;
+    }
+
     Ok(pool)
+}
+
+/// Rewrites absolute paths stored in the database after the data folder was renamed
+async fn update_moved_paths(
+    pool: &Pool<Sqlite>,
+    old_dir: &std::path::Path,
+    new_dir: &std::path::Path,
+) -> crate::Result<()> {
+    let old_prefix = old_dir.to_string_lossy().to_string();
+    let new_prefix = new_dir.to_string_lossy().to_string();
+
+    for (table, column) in [
+        ("java_versions", "path"),
+        ("profiles", "icon_path"),
+        ("profiles", "override_java_path"),
+        ("settings", "custom_dir"),
+        ("settings", "prev_custom_dir"),
+    ] {
+        let query = format!(
+            "UPDATE {table} SET {column} = ?2 || substr({column}, length(?1) + 1)              WHERE substr({column}, 1, length(?1)) = ?1"
+        );
+        sqlx::query(&query)
+            .bind(&old_prefix)
+            .bind(&new_prefix)
+            .execute(pool)
+            .await?;
+    }
+
+    Ok(())
 }

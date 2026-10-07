@@ -51,6 +51,9 @@ opener = { version = "0.7.2", features = ["reveal", "dbus-vendored"] }
 
 native-dialog = "0.7.0"
 
+# Cat Launcher: native playback of the click meow sound
+rodio = { version = "0.20", default-features = false, features = ["symphonia-mp3"] }
+
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 window-shadows = "0.2.1"
 

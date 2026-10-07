@@ -10,6 +10,9 @@ export const latestBetaCommitTruncatedSha = ref('')
 export const latestBetaCommitLink = ref('')
 export const launcherUrl = 'https://www.astralium.su/get/ar'
 
+// Cat Launcher: update checks are disabled so the launcher is never replaced by an AstralRinth release.
+const updatesEnabled = false
+
 const os = ref('')
 const releaseLink = `https://api.github.com/repos/DIDIRUS4/AstralRinth/releases/latest`
 const branchesLink = `https://api.github.com/repos/DIDIRUS4/AstralRinth/branches`
@@ -34,6 +37,7 @@ const blacklistedBuilds = [
  * @return {Promise<void>} This function does not return anything directly but updates the latestBetaCommitTruncatedSha and latestBetaCommitLink values.
  */
 export async function getBranches() {
+  if (!updatesEnabled) return
   fetch(branchesLink)
     .then(async (response) => {
       if (response.ok) {
@@ -74,6 +78,12 @@ export async function getBranches() {
  * @param {boolean} downloadArtifactBool - Indicates whether to download an artifact.
  */
 export async function getRemote(elementIdBool, downloadArtifactBool) {
+  if (!updatesEnabled) {
+    updateState.value = false
+    allowState.value = false
+    installState.value = false
+    return
+  }
   fetch(releaseLink)
     .then((response) => {
       if (!response.ok) {

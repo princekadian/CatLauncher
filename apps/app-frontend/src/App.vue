@@ -60,6 +60,8 @@ import dayjs from 'dayjs'
 import FriendsList from '@/components/ui/friends/FriendsList.vue'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import QuickInstanceSwitcher from '@/components/ui/QuickInstanceSwitcher.vue'
+import { playMeow } from '@/helpers/meow.js'
+import catBackground from '@/assets/cat-background.jpg'
 
 const themeStore = useTheming()
 
@@ -91,12 +93,20 @@ onMounted(async () => {
 
   document.querySelector('body').addEventListener('click', handleClick)
   document.querySelector('body').addEventListener('auxclick', handleAuxClick)
+  window.addEventListener('pointerdown', handleMeowClick, true)
 })
 
 onUnmounted(() => {
   document.querySelector('body').removeEventListener('click', handleClick)
   document.querySelector('body').removeEventListener('auxclick', handleAuxClick)
+  window.removeEventListener('pointerdown', handleMeowClick, true)
 })
+
+function handleMeowClick(e) {
+  if (e.button === 0 && !e.target.closest?.('[data-no-meow]')) {
+    playMeow()
+  }
+}
 
 async function setupApp() {
   stateInitialized.value = true
@@ -512,6 +522,10 @@ function handleAuxClick(e) {
     class="app-contents experimental-styles-within"
     :class="{ 'sidebar-enabled': sidebarVisible }"
   >
+    <div class="cat-background" aria-hidden="true">
+      <div class="cat-background-image" :style="{ backgroundImage: `url(${catBackground})` }"></div>
+      <div class="cat-background-overlay"></div>
+    </div>
     <div class="app-viewport flex-grow router-view">
       <div
         class="loading-indicator-container h-8 fixed z-50"
@@ -733,6 +747,31 @@ function handleAuxClick(e) {
   &.sidebar-enabled {
     grid-template-columns: 1fr 300px;
   }
+}
+
+.cat-background {
+  position: absolute;
+  inset: 0;
+  z-index: -20;
+  overflow: hidden;
+  border-top-left-radius: var(--radius-xl);
+  pointer-events: none;
+}
+
+.cat-background-image {
+  position: absolute;
+  inset: -12px;
+  background-size: cover;
+  background-position: center 35%;
+  filter: blur(3px) saturate(1.15);
+}
+
+// Theme-colored veil so all text stays readable on top of the photo
+.cat-background-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  opacity: 0.8;
 }
 
 .loading-indicator-container {

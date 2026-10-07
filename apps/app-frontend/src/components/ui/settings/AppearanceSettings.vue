@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Toggle, ThemeSelector, TeleportDropdownMenu } from '@modrinth/ui'
+import { Button, Slider, Toggle, ThemeSelector, TeleportDropdownMenu } from '@modrinth/ui'
 import { useTheming } from '@/store/state'
 import { get, set } from '@/helpers/settings'
 import { watch, ref } from 'vue'
 import { getOS } from '@/helpers/utils'
+import { meowSettings, playMeow } from '@/helpers/meow.js'
 
 const themeStore = useTheming()
 
@@ -20,7 +21,7 @@ watch(
 </script>
 <template>
   <h2 class="m-0 text-lg font-extrabold text-contrast">Color theme</h2>
-  <p class="m-0 mt-1">Select your preferred color theme for Modrinth App.</p>
+  <p class="m-0 mt-1">Select your preferred color theme for Cat Launcher.</p>
 
   <ThemeSelector
     :update-color-theme="
@@ -33,6 +34,35 @@ watch(
     :theme-options="themeStore.themeOptions"
     system-theme-color="system"
   />
+
+  <div class="mt-4 flex items-center justify-between">
+    <div>
+      <h2 class="m-0 text-lg font-extrabold text-contrast">Meow on click</h2>
+      <p class="m-0 mt-1">Play a cute meow sound every time you click inside the launcher.</p>
+    </div>
+    <Toggle
+      id="meow-enabled"
+      :model-value="meowSettings.enabled"
+      :checked="meowSettings.enabled"
+      @update:model-value="(e) => (meowSettings.enabled = e)"
+    />
+  </div>
+
+  <div v-if="meowSettings.enabled" class="mt-2">
+    <h2 class="m-0 text-base font-bold text-contrast">Meow volume</h2>
+    <div class="flex items-center gap-4">
+      <Slider
+        id="meow-volume"
+        v-model="meowSettings.volume"
+        class="flex-grow"
+        :min="0"
+        :max="100"
+        :step="1"
+        unit="%"
+      />
+      <Button data-no-meow @click="playMeow({ force: true })">Test meow</Button>
+    </div>
+  </div>
 
   <div class="mt-4 flex items-center justify-between">
     <div>

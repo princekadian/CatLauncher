@@ -146,7 +146,7 @@ function devModeCount() {
               <AstralRinthLogo class="w-6 h-6" />
             </button>
             <div>
-              <p class="m-0">AstralRinth App {{ version }}</p>
+              <p class="m-0">Cat Launcher {{ version }}</p>
               <p class="m-0">
                 <span v-if="osPlatform === 'macos'">MacOS</span>
                 <span v-else class="capitalize">{{ osPlatform }}</span>

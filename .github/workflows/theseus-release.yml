@@ -1,4 +1,4 @@
-name: 'AstralRinth App build'
+name: 'Cat Launcher build'
 on:
   push:
     branches:

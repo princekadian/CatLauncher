@@ -14,6 +14,12 @@ use tokio::sync::RwLock;
 use crate::util::utils;
 use crate::State;
 
+/// Discord application ID for "Cat Launcher" (from discord.com/developers/applications).
+/// The app's name is what Discord shows as "Playing ...".
+const DISCORD_CLIENT_ID: &str = "1557397764277801103";
+/// Rich Presence art asset key uploaded to that Discord application.
+const DISCORD_LOGO_ASSET: &str = "cat_logo";
+
 pub struct DiscordGuard {
     client: Arc<RwLock<DiscordIpcClient>>,
     connected: Arc<AtomicBool>,
@@ -41,7 +47,7 @@ impl DiscordGuard {
     /// If it fails, it will still return a DiscordGuard, but the client will be unconnected
     pub fn init() -> crate::Result<DiscordGuard> {
         let dipc =
-            DiscordIpcClient::new("1190718475832918136").map_err(|e| {
+            DiscordIpcClient::new(DISCORD_CLIENT_ID).map_err(|e| {
                 crate::ErrorKind::OtherError(format!(
                     "Could not create Discord client {}",
                     e,
@@ -108,8 +114,7 @@ impl DiscordGuard {
         let launcher =
             utils::read_package_json().expect("Failed to read package.json");
 
-        let build_info = format!("AR • v{}", launcher.version);
-        let build_download = "https://astralium.su/get/ar";
+        let build_info = format!("Cat Launcher • v{}", launcher.version);
 
         let time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -119,10 +124,8 @@ impl DiscordGuard {
             .state(msg)
             .assets(
                 Assets::new()
-                    .large_image("astralrinth_logo")
-                    .large_text(&build_info)
-                    .small_image("astralrinth_logo")
-                    .small_text(&build_download),
+                    .large_image(DISCORD_LOGO_ASSET)
+                    .large_text(&build_info),
             )
             .timestamps(Timestamps::new().start(time));
 

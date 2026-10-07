@@ -209,6 +209,7 @@ fn main() {
                         "show_launcher_logs_folder",
                         "progress_bars_list",
                         "get_opening_command",
+                        "play_meow",
                     ])
                     .default_permission(
                         DefaultPermissionRule::AllowAllCommands,

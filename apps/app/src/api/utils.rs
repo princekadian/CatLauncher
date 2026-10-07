@@ -18,7 +18,8 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             open_path,
             show_launcher_logs_folder,
             progress_bars_list,
-            get_opening_command
+            get_opening_command,
+            play_meow
         ])
         .build()
 }
@@ -146,4 +147,55 @@ pub async fn get_opening_command() -> Result<Option<CommandPayload>> {
 pub async fn handle_command(command: String) -> Result<()> {
     tracing::info!("handle command: {command}");
     Ok(theseus::handler::parse_and_emit_command(&command).await?)
+}
+
+/// Cat Launcher: the click "meow", embedded in the app.
+const MEOW_SOUND: &[u8] = include_bytes!("../../../app-frontend/src/assets/meow.mp3");
+
+/// Plays the meow sound through the system's default audio output at `volume` (0.0 to 1.0).
+/// Audio is handled natively (not by the webview) so it works with every audio driver.
+/// invoke('plugin:utils|play_meow', { volume })
+#[tauri::command]
+pub fn play_meow(volume: f32) {
+    static MEOW_PLAYER: std::sync::OnceLock<std::sync::Mutex<std::sync::mpsc::Sender<f32>>> =
+        std::sync::OnceLock::new();
+
+    let volume = if volume.is_finite() { volume.clamp(0.0, 1.0) } else { 0.6 };
+    if volume == 0.0 {
+        return;
+    }
+
+    let sender = MEOW_PLAYER.get_or_init(|| {
+        let (tx, rx) = std::sync::mpsc::channel::<f32>();
+        std::thread::spawn(move || meow_player_thread(rx));
+        std::sync::Mutex::new(tx)
+    });
+    if let Ok(sender) = sender.lock() {
+        let _ = sender.send(volume);
+    }
+}
+
+fn meow_player_thread(rx: std::sync::mpsc::Receiver<f32>) {
+    use rodio::{Decoder, OutputStream, Source};
+
+    // The output stream must live on this thread; reopen it if the audio device goes away
+    let mut output: Option<(OutputStream, rodio::OutputStreamHandle)> = None;
+    while let Ok(volume) = rx.recv() {
+        for _ in 0..2 {
+            if output.is_none() {
+                output = OutputStream::try_default().ok();
+            }
+            let Some((_, handle)) = &output else { break };
+            let Ok(source) = Decoder::new(std::io::Cursor::new(MEOW_SOUND)) else {
+                break;
+            };
+            match handle.play_raw(source.convert_samples().amplify(volume)) {
+                Ok(()) => break,
+                Err(e) => {
+                    tracing::warn!("Could not play meow sound: {e}");
+                    output = None;
+                }
+            }
+        }
+    }
 }
