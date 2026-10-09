@@ -230,7 +230,7 @@ The version shown in the installer's file name and in the launcher comes from `"
   follow steps 2–4:
   ```bash
   sudo apt-get update
-  sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev pkg-config libayatana-appindicator3-dev librsvg2-dev
+  sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev pkg-config libayatana-appindicator3-dev librsvg2-dev libasound2-dev
   ```
   The `.AppImage`, `.deb` and `.rpm` go to `target/release/bundle/appimage/`, `deb/` and `rpm/`. For other
   distributions, see the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
