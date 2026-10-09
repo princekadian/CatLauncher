@@ -80,31 +80,172 @@ available, or [build it yourself](#build-from-source).
 
 ## Build from source
 
-### Requirements
-- [Node.js](https://nodejs.org) 20 or newer and [pnpm](https://pnpm.io) 9 (`npm install -g pnpm@9`)
-- [Rust](https://rustup.rs) (stable)
-- **Windows:** [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) with the
-  **Desktop development with C++** workload, for example:
-  ```
-  winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-  ```
-- **Linux:** the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebKitGTK and friends).
+You can build the installer in two ways:
 
-### Commands
-```bash
-pnpm install
+- **[Option A: on GitHub](#option-a-build-the-installer-on-github-no-setup)**. No setup. GitHub's servers build
+  installers for Windows, macOS and Linux, and you download them.
+- **[Option B: on your own PC](#option-b-build-the-installer-on-your-pc)**. Needs about 10 GB of tools and
+  disk space, but gives you the installer locally and lets you test changes quickly.
 
-# Run the launcher in development mode
-pnpm app:dev
+### Option A: build the installer on GitHub (no setup)
 
-# Build the installers
-pnpm app:build
+The workflow in [`.github/workflows/theseus-release.yml`](.github/workflows/theseus-release.yml) builds the
+installers automatically.
+
+1. **Fork** this repository on GitHub (or use your own copy of it).
+2. Open your fork's **Actions** tab. If GitHub asks, click **I understand my workflows, go ahead and enable them**.
+3. Start a build in one of these ways:
+   - **By hand:** in the Actions tab, pick **Cat Launcher build** on the left, click **Run workflow**, choose a
+     branch and click the green **Run workflow** button.
+   - **By pushing a branch** whose name starts with `feature` (for example `feature-my-change`). This only
+     starts a build if the push changes files in `apps/app`, `apps/app-frontend`, `packages/app-lib`,
+     `packages/daedalus`, `packages/assets`, `packages/ui`, `packages/utils` or the workflow file.
+   - **By pushing a tag** that starts with `v` or `build`, for example:
+     ```bash
+     git tag v0.9.205
+     git push origin v0.9.205
+     ```
+4. Wait for the run to finish. A build with no cache takes about 20–40 minutes; later builds are faster.
+5. Open the finished run and scroll to **Artifacts**. Download:
+   - **`windows-latest`**: the `.exe` installer (`nsis` folder) and the `.msi` installer (`msi` folder)
+   - **`macos-latest`**: the `.dmg`
+   - **`ubuntu-latest`**: the `.AppImage`, `.deb` and `.rpm`
+
+   Artifacts are `.zip` files. Extract them to get the installers. GitHub deletes them after 90 days, so attach the
+   ones you want to keep to a [release](https://github.com/princekadian/CatLauncher/releases/new).
+
+### Option B: build the installer on your PC
+
+These steps are for **Windows 10/11**. macOS and Linux notes follow after them.
+
+#### 1. Install the tools (one time only)
+
+Open **PowerShell** and run each command. Accept any administrator (UAC) prompts.
+
+1. **Git**, to download the code:
+   ```powershell
+   winget install --id Git.Git -e
+   ```
+2. **Node.js 20 or newer**, to build the launcher's interface:
+   ```powershell
+   winget install --id OpenJS.NodeJS.LTS -e
+   ```
+3. **Visual Studio Build Tools with the C++ workload** (about 6 GB). Rust needs Microsoft's C++ linker and the
+   Windows SDK:
+   ```powershell
+   winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+   ```
+   If you already have Visual Studio (Community, Professional...), you can instead open the
+   **Visual Studio Installer**, click **Modify**, and tick **Desktop development with C++**. Installing Visual
+   Studio without that workload is **not** enough.
+4. **Rust** (the stable toolchain, about 1.5 GB):
+   ```powershell
+   winget install --id Rustlang.Rustup -e
+   ```
+5. **Close PowerShell and open a new window** so it picks up the new tools. Then turn on
+   [pnpm](https://pnpm.io), which comes with Node.js:
+   ```powershell
+   corepack enable
+   ```
+   If `corepack` fails with a permission error, run `npm install -g pnpm@9` instead.
+6. Check that everything is there. Each command should print a version number:
+   ```powershell
+   git --version
+   node --version
+   pnpm --version
+   rustc --version
+   cargo --version
+   ```
+
+The installer also needs **Microsoft Edge WebView2**. Windows 10 (recent updates) and Windows 11 already include it.
+
+#### 2. Download the code
+
+```powershell
+git clone https://github.com/princekadian/CatLauncher.git
+cd CatLauncher
 ```
 
-Installers are written to `target/release/bundle/` (`nsis/*.exe` and `msi/*.msi` on Windows).
+To update an existing copy later, run `git pull` inside the `CatLauncher` folder.
 
-> **Low on RAM?** Compiling uses a lot of memory. If the build fails with `memory allocation ... failed`,
-> limit parallel jobs, for example `CARGO_BUILD_JOBS=4 pnpm app:build`.
+#### 3. Install the JavaScript dependencies
+
+```powershell
+pnpm install
+```
+
+The first run takes a few minutes. Run it again whenever you pull new changes.
+
+#### 4. Build the installer
+
+```powershell
+pnpm --filter=@modrinth/app run tauri build --config "tauri-release.conf.json"
+```
+
+This is the same command that GitHub Actions uses. It:
+1. builds the interface (`apps/app-frontend`),
+2. compiles the launcher in release mode (`apps/app`, `packages/app-lib`, `packages/daedalus`), and
+3. packages the result into installers. The first time, it automatically downloads the NSIS and WiX tools that
+   the `.exe` and `.msi` installers need.
+
+The **first build takes 15–40 minutes** depending on your PC and uses about 8–10 GB in the `target` folder. Later
+builds only recompile what changed and are much faster.
+
+#### 5. Find the installer
+
+When the build prints `Finished ... bundles at:`, your installers are in:
+
+| File | Location |
+|---|---|
+| `.exe` installer (recommended) | `target\release\bundle\nsis\Cat Launcher_<version>_x64-setup.exe` |
+| `.msi` installer | `target\release\bundle\msi\Cat Launcher_<version>_x64_en-US.msi` |
+| The launcher itself, without installing | `target\release\Cat Launcher.exe` |
+
+The installer installs for all users, so it asks for administrator permission. It isn't code-signed, so Windows
+SmartScreen may warn about it. See [Install](#install).
+
+#### Run the launcher without building an installer
+
+To try changes quickly, start the launcher in development mode. It reloads the interface when you save a file:
+
+```powershell
+pnpm app:dev
+```
+
+Development builds use the same data folder (`%APPDATA%\CatLauncher`) as the installed launcher.
+
+#### Changing the version number
+
+The version shown in the installer's file name and in the launcher comes from `"version"` in
+[`apps/app/tauri.conf.json`](apps/app/tauri.conf.json). Change it before building a new release.
+
+#### macOS and Linux
+
+- **macOS:** install the Xcode command line tools (`xcode-select --install`), Node.js, pnpm and
+  [Rust](https://rustup.rs), then follow steps 2–4. The `.dmg` is written to `target/release/bundle/dmg/`.
+  To build a universal (Intel + Apple Silicon) app the way GitHub does, run
+  `rustup target add aarch64-apple-darwin x86_64-apple-darwin` and add `--target universal-apple-darwin` to the
+  build command. The output then goes to `target/universal-apple-darwin/release/bundle/`.
+- **Linux (Debian/Ubuntu):** install the system libraries, then Node.js, pnpm and [Rust](https://rustup.rs), and
+  follow steps 2–4:
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev pkg-config libayatana-appindicator3-dev librsvg2-dev
+  ```
+  The `.AppImage`, `.deb` and `.rpm` go to `target/release/bundle/appimage/`, `deb/` and `rpm/`. For other
+  distributions, see the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+#### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `linker 'link.exe' not found` or `error: linking with link.exe failed` | The Visual Studio **C++ workload** is missing. Repeat step 1.3, then open a new PowerShell window. |
+| `'pnpm' / 'cargo' is not recognized` | Close and reopen PowerShell after installing. If it still fails, restart Windows so the `PATH` updates. |
+| `memory allocation of ... bytes failed`, or the PC freezes while compiling | Compiling uses a lot of RAM. Limit parallel jobs: run `$env:CARGO_BUILD_JOBS = 4` in PowerShell, then the build command again. Use `2` on PCs with 8 GB RAM. |
+| Errors mentioning `DATABASE_URL` or `sqlx` | The launcher builds from the saved queries in `packages/app-lib/.sqlx`. Make sure you have no `DATABASE_URL` environment variable set (`Remove-Item Env:DATABASE_URL` in PowerShell). |
+| `failed to bundle project` while downloading NSIS/WiX | A firewall or antivirus blocked the download. Allow it, or retry on another network. |
+| Build fails right after `git pull` | Run `pnpm install` again. If Rust errors persist, run `cargo clean` and rebuild. |
+| The installer says another copy is running | Close Cat Launcher (check Task Manager for `Cat Launcher.exe`), then run the installer again. |
 
 ## What changed compared to AstralRinth
 

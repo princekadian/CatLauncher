@@ -400,6 +400,12 @@ pub enum ArgumentType {
     Game,
     /// The argument is passed to the JVM
     Jvm,
+    /// Default JVM arguments the user may edit (Minecraft 26.1+); not used by the launcher
+    #[serde(rename = "default-user-jvm")]
+    DefaultUserJvm,
+    /// Any argument type added by Mojang that the launcher does not know about yet
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
